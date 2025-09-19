@@ -13,9 +13,28 @@ def load_excel(path="weine.xlsx"):
 df = load_excel()
 
 groups = []
-for (wg, reg, land), g in df.groupby(["Weingut","Region","Land"], sort=False):
-    wines = g[["Art","Weinname","Jahr"]].to_dict(orient="records")
-    groups.append({"weingut": wg, "region": reg, "land": land, "wines": wines})
+
+# Ebene 1: nach Art gruppieren
+for art, g_art in df.groupby("Art", sort=False):
+    weingueter = []
+    
+    # Ebene 2: nach Weingut, Region, Land gruppieren
+    for (wg, reg, land), g_wg in g_art.groupby(["Weingut","Region","Land"], sort=False):
+        g_active = g_wg[g_wg["Aktiv"] == 1]
+        if not g_active.empty:
+            wines = g_active[["Weinname","Jahr","Rebsorten"]].to_dict(orient="records")
+            weingueter.append({
+                "weingut": wg,
+                "region": reg,
+                "land": land,
+                "wines": wines
+            })
+    
+    if weingueter:
+        groups.append({
+            "art": art,
+            "weingueter": weingueter
+        })
 
 # -------- CSS mit Google Fonts --------
 CSS = """
@@ -54,14 +73,20 @@ h1 {
   margin: 26px 0 12px;
   color: #fff;
   text-align: center;
-
 }
 .group-title {
   font-family: 'Playfair Display', serif;
   font-weight: 800;
-  font-size: 1.3rem;
+  font-size: 1.8rem;
   margin: 26px 0 12px;
   color: #fff;
+}
+.weingut-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin: 16px 0 8px;
+  color: #ddd;
 }
 hr.rule {
   border: none;
@@ -81,31 +106,46 @@ hr.rule {
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-sprueche = ["Wein ist Traubensaft mit mehr Lebenserfahrung",
-            "Meine Laune ist im Keller - ich hoffe sie bringt Wein mit",
-            "Zu Vino sag ich nie no",
-            "Test Test Test",
-            "Test Test Test"]
+sprueche = [
+    "Wein ist Traubensaft mit mehr Lebenserfahrung",
+    "Meine Laune ist im Keller - ich hoffe sie bringt Wein mit",
+    "Zu Vino sag ich nie no",
+    "Test Test Test",
+    "Test Test Test",            
+    "Test Test Test",
+    "Test Test Test"
+]
 
 # -------- Header --------
 st.markdown("<div class='group-title-big'>Enoteca</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub'>in · feriore · motzo  </div>", unsafe_allow_html=True)
+st.markdown("<div class='sub'>nel · paese · di · Niedermotzing</div>", unsafe_allow_html=True)
 
 # -------- Inhalt --------
 for i, g in enumerate(groups):
     if i >= 0:
         st.markdown('<hr class="rule">', unsafe_allow_html=True)
-    st.markdown(f"<div class='group-title'>{g['weingut']}, {g['region']} ({g['land']})</div>", unsafe_allow_html=True)
-    for w in g["wines"]:
-        jahr = int(w["Jahr"]) if pd.notna(w["Jahr"]) else ""
-        art = w["Art"].upper()
-        st.markdown(
-  #          f"<div class='wine-row'>{w['Weinname']} | <span class='year'>{jahr}</span></div>",
-            f"<div class='wine-row'>{art} | {w["Weinname"]} | {jahr}",
-            unsafe_allow_html=True
-        )
-    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Art als große Überschrift
+    st.markdown(f"<div class='group-title'>{g['art']}</div>", unsafe_allow_html=True)    
     st.markdown(
-        "<div class='sub'>“" + sprueche[i] + "”</div>",
+        "<div class='sub'>“" + sprueche[i % len(sprueche)] + "”</div>",
         unsafe_allow_html=True
     )
+    # st.markdown('<hr class="rule">', unsafe_allow_html=True)
+
+    # darunter die Weingüter
+    for wg in g["weingueter"]:
+        st.markdown('<hr class="rule">', unsafe_allow_html=True)
+        st.markdown(f"<div class='weingut-title'>{wg['weingut']}, {wg['region']} ({wg['land']})</div>", unsafe_allow_html=True)
+
+        for w in wg["wines"]:
+            jahr = int(w["Jahr"]) if pd.notna(w["Jahr"]) else ""
+            rebsorte = f" - {w['Rebsorten']}" if pd.notna(w["Rebsorten"]) else ""
+            st.markdown(
+                f"<div class='wine-row'>{w['Weinname']}{rebsorte} | <span class='year'>{jahr}</span></div>",
+                unsafe_allow_html=True
+            )
+
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+
