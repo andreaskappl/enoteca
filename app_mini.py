@@ -31,6 +31,9 @@ for art, g_art in df.groupby("Art", sort=False):
             })
     
     if weingueter:
+        
+        weingueter = sorted(weingueter, key=lambda x: x["weingut"])
+
         groups.append({
             "art": art,
             "weingueter": weingueter
